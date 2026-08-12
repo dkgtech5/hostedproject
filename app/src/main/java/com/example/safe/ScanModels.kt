@@ -8,18 +8,17 @@ data class ScanRequest(
 
 data class ScanResponse(
     @SerializedName("url") val url: String,
-    @SerializedName("status") val status: String,
-    @SerializedName("risk_score") val riskScore: Double,
-    @SerializedName("confidence_legitimate") val confidenceLegitimate: Double,
-    @SerializedName("confidence_phishing") val confidencePhishing: Double,
-    @SerializedName("security_checks") val securityChecks: SecurityChecks
+    @SerializedName("prediction") val prediction: String,
+    @SerializedName("legitimate_probability") val legitimateProbability: Double,
+    @SerializedName("phishing_probability") val phishingProbability: Double,
+    @SerializedName("security_checks") val securityChecks: SecurityChecksResponse? = null
 )
 
-data class SecurityChecks(
+data class SecurityChecksResponse(
     @SerializedName("https_enabled") val httpsEnabled: Boolean,
-    @SerializedName("trusted_domain") val trustedDomain: Boolean,
+    @SerializedName("no_ip_in_url") val noIpInUrl: Boolean,
     @SerializedName("no_suspicious_redirect") val noSuspiciousRedirect: Boolean,
-    @SerializedName("clean_url_structure") val cleanUrlStructure: Boolean
+    @SerializedName("shortened_url") val shortenedUrl: Boolean
 )
 
 // OTP Related Models

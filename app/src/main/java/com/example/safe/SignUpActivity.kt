@@ -34,6 +34,7 @@ class SignUpActivity : AppCompatActivity() {
         val etEmail = findViewById<EditText>(R.id.etEmail)
         val etPassword = findViewById<EditText>(R.id.etPassword)
         val btnSignUp = findViewById<Button>(R.id.btnSignUp)
+        val progressBar = findViewById<android.widget.ProgressBar>(R.id.pbSignUp)
 
         btnSignUp.setOnClickListener {
             val fullName = etName.text.toString().trim()
@@ -54,11 +55,17 @@ class SignUpActivity : AppCompatActivity() {
                 if (dbHelper.checkEmail(email)) {
                     Toast.makeText(this, "Email already registered.", Toast.LENGTH_SHORT).show()
                 } else {
+                    btnSignUp.isEnabled = false
+                    btnSignUp.text = ""
+                    progressBar.visibility = android.view.View.VISIBLE
                     val result = dbHelper.registerUser(fullName, email, password)
                     if (result != -1L) {
                         Log.d(TAG, "User registered locally: $fullName")
-                        sendOtpAndVerify(email)
+                        sendOtpAndVerify(email, btnSignUp, progressBar)
                     } else {
+                        btnSignUp.isEnabled = true
+                        btnSignUp.text = getString(R.string.sign_up)
+                        progressBar.visibility = android.view.View.GONE
                         Toast.makeText(this, "Registration Failed", Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -70,10 +77,14 @@ class SignUpActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendOtpAndVerify(email: String) {
+    private fun sendOtpAndVerify(email: String, button: Button, progressBar: android.widget.ProgressBar) {
         val request = OtpRequest(email)
         RetrofitClient.apiService.sendOtp(request).enqueue(object : retrofit2.Callback<OtpResponse> {
             override fun onResponse(call: retrofit2.Call<OtpResponse>, response: retrofit2.Response<OtpResponse>) {
+                button.isEnabled = true
+                button.text = getString(R.string.sign_up)
+                progressBar.visibility = android.view.View.GONE
+
                 if (response.isSuccessful) {
                     Toast.makeText(this@SignUpActivity, "OTP sent to your email", Toast.LENGTH_SHORT).show()
                     val intent = Intent(this@SignUpActivity, OtpVerificationActivity::class.java)
@@ -86,6 +97,9 @@ class SignUpActivity : AppCompatActivity() {
             }
 
             override fun onFailure(call: retrofit2.Call<OtpResponse>, t: Throwable) {
+                button.isEnabled = true
+                button.text = getString(R.string.sign_up)
+                progressBar.visibility = android.view.View.GONE
                 Toast.makeText(this@SignUpActivity, "Connection to server failed", Toast.LENGTH_SHORT).show()
             }
         })

@@ -25,6 +25,8 @@ class ResultActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_result)
+        
+        android.util.Log.d("ResultActivity", "Activity created")
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -34,32 +36,44 @@ class ResultActivity : AppCompatActivity() {
 
         val url = intent.getStringExtra("URL") ?: "https://example.com"
         val isSafe = intent.getBooleanExtra("IS_SAFE", true)
-        val riskScore = intent.getIntExtra("RISK_SCORE", if (isSafe) 5 else 94)
+        val riskScore = intent.getIntExtra("RISK_SCORE", 0)
+        val legitProb = intent.getDoubleExtra("LEGITIMATE_PROB", 0.0)
+        val phishProb = intent.getDoubleExtra("PHISHING_PROB", 0.0)
         
-        // Extract detailed checks
+        android.util.Log.d("ResultActivity", "Data: url=$url, safe=$isSafe, score=$riskScore, legit=$legitProb, phish=$phishProb")
+        
         val https = intent.getBooleanExtra("HTTPS", true)
         val domain = intent.getBooleanExtra("DOMAIN", true)
         val redirect = intent.getBooleanExtra("REDIRECT", true)
         val structure = intent.getBooleanExtra("STRUCTURE", true)
 
-        setupUI(url, isSafe, riskScore, https, domain, redirect, structure)
+        setupUI(url, isSafe, riskScore, legitProb, phishProb, https, domain, redirect, structure)
     }
 
-    private fun setupUI(url: String, isSafe: Boolean, riskScore: Int, https: Boolean, domain: Boolean, redirect: Boolean, structure: Boolean) {
+    private fun setupUI(url: String, isSafe: Boolean, riskScore: Int, legitProb: Double, phishProb: Double, https: Boolean, domain: Boolean, redirect: Boolean, structure: Boolean) {
+        android.util.Log.d("ResultActivity", "Setting up UI...")
         val ivResultIcon = findViewById<ImageView>(R.id.ivResultIcon)
         val tvResultStatus = findViewById<TextView>(R.id.tvResultStatus)
         val tvResultSubtitle = findViewById<TextView>(R.id.tvResultSubtitle)
         val tvRiskPercentage = findViewById<TextView>(R.id.tvRiskPercentage)
         val pbRisk = findViewById<ProgressBar>(R.id.pbRisk)
+        val tvLegitProb = findViewById<TextView?>(R.id.tvLegitProb)
+        val tvPhishProb = findViewById<TextView?>(R.id.tvPhishProb)
         val tvResultUrl = findViewById<TextView>(R.id.tvResultUrl)
         val tvDetailsHeader = findViewById<TextView>(R.id.tvDetailsHeader)
         val llChecklist = findViewById<LinearLayout>(R.id.llResultChecklist)
         val btnPrimary = findViewById<Button>(R.id.btnPrimaryAction)
         val btnSecondary = findViewById<Button>(R.id.btnSecondaryAction)
+        val btnCopyUrl = findViewById<ImageView>(R.id.btnCopyUrl)
 
         tvResultUrl.text = url
         tvRiskPercentage.text = "$riskScore%"
         pbRisk.progress = riskScore
+        
+        tvLegitProb?.text = String.format(java.util.Locale.getDefault(), "Legitimate: %.1f%%", legitProb * 100)
+        tvPhishProb?.text = String.format(java.util.Locale.getDefault(), "Phishing: %.1f%%", phishProb * 100)
+
+        android.util.Log.d("ResultActivity", "UI Basic data set. isSafe=$isSafe")
 
         if (isSafe) {
             ivResultIcon.setImageResource(R.drawable.ic_check_circle)
@@ -74,11 +88,12 @@ class ResultActivity : AppCompatActivity() {
             btnPrimary.text = "Visit Website"
             btnPrimary.setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_visit, 0, 0, 0)
             btnSecondary.text = "Scan Another"
+            btnCopyUrl.visibility = View.VISIBLE
 
-            addChecklistItem(llChecklist, "HTTPS Enabled", https)
-            addChecklistItem(llChecklist, "Trusted Domain", domain)
-            addChecklistItem(llChecklist, "No Suspicious Redirect", redirect)
-            addChecklistItem(llChecklist, "Clean URL Structure", structure)
+            addChecklistItem(llChecklist, "HTTPS / SSL Enabled", https)
+            addChecklistItem(llChecklist, "Valid Domain (No IP)", domain)
+            addChecklistItem(llChecklist, "No Suspicious Redirects", redirect)
+            addChecklistItem(llChecklist, "Standard URL Structure", structure)
         } else {
             ivResultIcon.setImageResource(R.drawable.ic_error)
             ivResultIcon.imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_phishing_red))
@@ -86,15 +101,16 @@ class ResultActivity : AppCompatActivity() {
             tvResultStatus.setTextColor(ContextCompat.getColor(this, R.color.status_phishing_red))
             tvResultSubtitle.text = "This website is likely phishing!"
             tvRiskPercentage.setTextColor(ContextCompat.getColor(this, R.color.status_phishing_red))
-            tvDetailsHeader.text = "Threat Reasons"
+            tvDetailsHeader.text = "Analysis Results"
             
             btnPrimary.visibility = View.GONE
             btnSecondary.text = "Go Back"
+            btnCopyUrl.visibility = View.GONE
 
-            addChecklistItem(llChecklist, "HTTPS Enabled", https)
-            addChecklistItem(llChecklist, "Trusted Domain", domain)
-            addChecklistItem(llChecklist, "No Suspicious Redirect", redirect)
-            addChecklistItem(llChecklist, "Clean URL Structure", structure)
+            addChecklistItem(llChecklist, "SSL Check Passed", https)
+            addChecklistItem(llChecklist, "Domain Trust Level", domain)
+            addChecklistItem(llChecklist, "Redirect Check", redirect)
+            addChecklistItem(llChecklist, "Url Pattern Check", structure)
         }
 
         btnSecondary.setOnClickListener {

@@ -35,6 +35,7 @@ class ForgotPasswordActivity : AppCompatActivity() {
         val etNewPassword = findViewById<EditText>(R.id.etNewPassword)
         val etConfirmPassword = findViewById<EditText>(R.id.etConfirmPassword)
         val btnReset = findViewById<Button>(R.id.btnResetPassword)
+        val progressBar = findViewById<android.widget.ProgressBar>(R.id.pbForgot)
 
         btnReset.setOnClickListener {
             val email = etEmail.text.toString().trim()
@@ -53,7 +54,10 @@ class ForgotPasswordActivity : AppCompatActivity() {
                 Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show()
             } else {
                 if (dbHelper.checkEmail(email)) {
-                    sendOtpAndVerify(email, newPass)
+                    btnReset.isEnabled = false
+                    btnReset.text = ""
+                    progressBar.visibility = android.view.View.VISIBLE
+                    sendOtpAndVerify(email, newPass, btnReset, progressBar)
                 } else {
                     Toast.makeText(this, "Email not registered.", Toast.LENGTH_SHORT).show()
                 }
@@ -65,10 +69,14 @@ class ForgotPasswordActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendOtpAndVerify(email: String, newPass: String) {
+    private fun sendOtpAndVerify(email: String, newPass: String, button: Button, progressBar: android.widget.ProgressBar) {
         val request = OtpRequest(email)
         RetrofitClient.apiService.sendOtp(request).enqueue(object : Callback<OtpResponse> {
             override fun onResponse(call: Call<OtpResponse>, response: Response<OtpResponse>) {
+                button.isEnabled = true
+                button.text = "Reset Password"
+                progressBar.visibility = android.view.View.GONE
+
                 if (response.isSuccessful) {
                     Toast.makeText(this@ForgotPasswordActivity, "OTP sent to your email", Toast.LENGTH_SHORT).show()
                     val intent = Intent(this@ForgotPasswordActivity, OtpVerificationActivity::class.java)
@@ -78,12 +86,15 @@ class ForgotPasswordActivity : AppCompatActivity() {
                     startActivity(intent)
                     finish()
                 } else {
-                    Toast.makeText(this@ForgotPasswordActivity, "Failed to send OTP", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ForgotPasswordActivity, "Failed to send OTP. Try again.", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onFailure(call: Call<OtpResponse>, t: Throwable) {
-                Toast.makeText(this@ForgotPasswordActivity, "Connection Failed", Toast.LENGTH_SHORT).show()
+                button.isEnabled = true
+                button.text = "Reset Password"
+                progressBar.visibility = android.view.View.GONE
+                Toast.makeText(this@ForgotPasswordActivity, "Network Error: ${t.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }

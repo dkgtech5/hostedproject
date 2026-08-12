@@ -5,8 +5,6 @@ import android.animation.ValueAnimator
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.animation.LinearInterpolator
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -28,6 +26,8 @@ class ScanningActivity : AppCompatActivity() {
     private lateinit var ivChecks: List<ImageView>
     private lateinit var tvChecks: List<TextView>
     private var apiResponse: ScanResponse? = null
+    private var isNavigating = false
+    private var isAnimationFinished = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,26 +69,33 @@ class ScanningActivity : AppCompatActivity() {
     }
 
     private fun performScan(url: String) {
-        // Start the real API call
         val request = ScanRequest(url)
         
         RetrofitClient.apiService.predictUrl(request).enqueue(object : Callback<ScanResponse> {
             override fun onResponse(call: Call<ScanResponse>, response: Response<ScanResponse>) {
                 if (response.isSuccessful) {
                     apiResponse = response.body()
-                    android.util.Log.d("ScanningActivity", "API Success: ${apiResponse?.status}")
+                    android.util.Log.d("ScanningActivity", "API Success: ${apiResponse?.prediction}")
+                    
+                    // If animation is already done, navigate now
+                    if (isAnimationFinished) {
+                        apiResponse?.let { navigateToResults(it) }
+                    }
                 } else {
                     android.util.Log.e("ScanningActivity", "API Error: ${response.code()}")
-                    Toast.makeText(this@ScanningActivity, "Server Error: ${response.message()}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@ScanningActivity, "Server Error: ${response.code()}", Toast.LENGTH_LONG).show()
+                    finish()
                 }
             }
 
             override fun onFailure(call: Call<ScanResponse>, t: Throwable) {
-                Toast.makeText(this@ScanningActivity, "Connection Failed: ${t.message}", Toast.LENGTH_LONG).show()
+                android.util.Log.e("ScanningActivity", "API Failure: ${t.message}")
+                Toast.makeText(this@ScanningActivity, "Connection Failed", Toast.LENGTH_LONG).show()
+                finish()
             }
         })
 
-        // Run the 5-second animation to keep UX smooth
+        // Run the 5-second animation
         val animator = ValueAnimator.ofInt(0, 100)
         animator.duration = 5000 
         animator.interpolator = LinearInterpolator()
@@ -103,18 +110,11 @@ class ScanningActivity : AppCompatActivity() {
         animator.addListener(object : Animator.AnimatorListener {
             override fun onAnimationStart(animation: Animator) {}
             override fun onAnimationEnd(animation: Animator) {
+                isAnimationFinished = true
                 if (apiResponse != null) {
                     navigateToResults(apiResponse!!)
                 } else {
-                    // If API is slow or failed, wait a bit or handle it
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        if (apiResponse != null) {
-                            navigateToResults(apiResponse!!)
-                        } else {
-                            Toast.makeText(this@ScanningActivity, "Unable to get results", Toast.LENGTH_SHORT).show()
-                            finish()
-                        }
-                    }, 2000)
+                    findViewById<TextView>(R.id.tvAnalyzingSubtitle).text = "Finalizing analysis..."
                 }
             }
             override fun onAnimationCancel(animation: Animator) {}
@@ -124,32 +124,46 @@ class ScanningActivity : AppCompatActivity() {
     }
 
     private fun navigateToResults(data: ScanResponse) {
-        // Save to database
-        val dbHelper = DatabaseHelper(this)
-        dbHelper.saveScan(data.url, data.status == "SAFE", data.riskScore)
-
-        val intent = Intent(this, ResultActivity::class.java)
-        intent.putExtra("URL", data.url)
-        intent.putExtra("IS_SAFE", data.status == "SAFE")
-        intent.putExtra("RISK_SCORE", data.riskScore.toInt())
+        if (isNavigating || isFinishing) return
+        isNavigating = true
         
-        // Pass security checks
-        intent.putExtra("HTTPS", data.securityChecks.httpsEnabled)
-        intent.putExtra("DOMAIN", data.securityChecks.trustedDomain)
-        intent.putExtra("REDIRECT", data.securityChecks.noSuspiciousRedirect)
-        intent.putExtra("STRUCTURE", data.securityChecks.cleanUrlStructure)
+        android.util.Log.d("ScanningActivity", "Navigating to results for: ${data.url}")
+        
+        val isSafe = data.prediction == "LEGITIMATE"
+        val riskScore = (data.phishingProbability * 100).toInt()
+
+        // Save to database
+        try {
+            val dbHelper = DatabaseHelper(this)
+            dbHelper.saveScan(data.url, isSafe, riskScore.toDouble())
+        } catch (e: Exception) {
+            android.util.Log.e("ScanningActivity", "DB Error: ${e.message}")
+        }
+
+        val intent = Intent(this, ResultActivity::class.java).apply {
+            putExtra("URL", data.url)
+            putExtra("IS_SAFE", isSafe)
+            putExtra("RISK_SCORE", riskScore)
+            putExtra("LEGITIMATE_PROB", data.legitimateProbability)
+            putExtra("PHISHING_PROB", data.phishingProbability)
+            
+            val checks = data.securityChecks
+            putExtra("HTTPS", checks?.httpsEnabled ?: data.url.startsWith("https", ignoreCase = true))
+            putExtra("DOMAIN", checks?.noIpInUrl ?: isSafe)
+            putExtra("REDIRECT", checks?.noSuspiciousRedirect ?: isSafe)
+            putExtra("STRUCTURE", !(checks?.shortenedUrl ?: !isSafe))
+        }
         
         startActivity(intent)
         finish()
     }
 
     private fun updateChecklist(progress: Int) {
-        // Simple logic to check items based on progress milestones
         val milestones = listOf(20, 40, 60, 80, 100)
         for (i in milestones.indices) {
             if (progress >= milestones[i]) {
-                ivChecks[i].setColorFilter(Color.parseColor("#10B981")) // Green
-                tvChecks[i].setTextColor(Color.parseColor("#0F172A")) // Dark
+                ivChecks[i].setColorFilter(Color.parseColor("#10B981")) 
+                tvChecks[i].setTextColor(Color.parseColor("#0F172A")) 
             }
         }
     }
