@@ -57,8 +57,8 @@ async def send_otp(request: OtpRequest):
         await fm.send_message(message)
         return {"success": True, "message": "OTP sent successfully"}
     except Exception as e:
-        print(f"Mail Error: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to send email")
+        # Returning the actual error for debugging
+        return {"success": False, "detail": str(e)}
 
 @router.post("/verify-otp")
 async def verify_otp(request: OtpVerifyRequest):
