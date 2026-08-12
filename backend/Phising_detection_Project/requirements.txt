@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+gunicorn
+scikit-learn
+pandas
+numpy
+joblib
+fastapi-mail
+pydantic[email]
+email-validator
+dnspython
+python-whois
+requests
+python-multipart
