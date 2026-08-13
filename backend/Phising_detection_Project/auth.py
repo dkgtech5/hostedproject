@@ -64,8 +64,10 @@ async def send_otp(request: OtpRequest):
 
 @router.post("/verify-otp")
 async def verify_otp(request: OtpVerifyRequest):
-    if request.email in otp_storage and otp_storage[request.email] == request.otp:
-        del otp_storage[request.email]
+    # Master code for demo/presentation purposes or check stored OTP
+    if request.otp == "000000" or (request.email in otp_storage and otp_storage[request.email] == request.otp):
+        if request.email in otp_storage:
+            del otp_storage[request.email]
         return {"success": True, "message": "OTP verified successfully"}
     else:
         raise HTTPException(status_code=400, detail="Invalid OTP")
