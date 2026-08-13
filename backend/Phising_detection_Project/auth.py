@@ -13,10 +13,12 @@ conf = ConnectionConfig(
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "iqnd xnkg xeor vdwv"),
     MAIL_FROM = os.getenv("MAIL_FROM", "dipak.231713@ncit.edu.np"),
     MAIL_PORT = int(os.getenv("MAIL_PORT", 465)),
-    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com"),
+    MAIL_SERVER = "smtp.gmail.com",
     MAIL_STARTTLS = False,
     MAIL_SSL_TLS = True,
-    USE_CREDENTIALS = True
+    USE_CREDENTIALS = True,
+    VALIDATE_CERTS = True,
+    TIMEOUT = 20
 )
 
 # Temporary storage for OTPs
