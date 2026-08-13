@@ -11,14 +11,14 @@ router = APIRouter()
 conf = ConnectionConfig(
     MAIL_USERNAME = os.getenv("MAIL_USERNAME", "dipak.231713@ncit.edu.np"),
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "iqnd xnkg xeor vdwv"),
-    MAIL_FROM = os.getenv("MAIL_FROM", "dipak.231713@ncit.edu.np"),
-    MAIL_PORT = int(os.getenv("MAIL_PORT", 465)),
+    MAIL_FROM = os.getenv("MAIL_FROM", os.getenv("MAIL_USERNAME", "dipak.231713@ncit.edu.np")),
+    MAIL_PORT = int(os.getenv("MAIL_PORT", 587)),
     MAIL_SERVER = "smtp.gmail.com",
-    MAIL_STARTTLS = False,
-    MAIL_SSL_TLS = True,
+    MAIL_STARTTLS = True,
+    MAIL_SSL_TLS = False,
     USE_CREDENTIALS = True,
     VALIDATE_CERTS = True,
-    TIMEOUT = 20
+    TIMEOUT = 60
 )
 
 # Temporary storage for OTPs
